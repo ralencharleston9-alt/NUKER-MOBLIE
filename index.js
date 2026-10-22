@@ -2,111 +2,109 @@
 const {
   Client,
   GatewayIntentBits,
+  REST,
+  Routes,
+  SlashCommandBuilder,
   Events
 } = require("discord.js");
 
-// ===================================
-// SZYT NUKERS — SAFE TEST SIMULATOR
-// ===================================
+const TOKEN = process.env.DISCORD_TOKEN;
 
-const CONFIG = {
-  prefix: "!",
-  messagesPerChannel: 1000,
-  simulatedChannels: 900,
-  testMessage: "GG",
-
-  // Simulation only. Never sends bulk messages.
-  simulationOnly: true
-};
-
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
-  ]
-});
-
-let simulationRuns = 0;
-
-function makeSimulationReport() {
-  const perChannel = CONFIG.messagesPerChannel;
-  const channels = CONFIG.simulatedChannels;
-
-  if (
-    !Number.isSafeInteger(perChannel) ||
-    perChannel < 0 ||
-    !Number.isSafeInteger(channels) ||
-    channels < 0
-  ) {
-    throw new Error("Counts must be non-negative integers.");
-  }
-
-  simulationRuns++;
-
-  return [
-    "🧪 **SZYT — SIMULATION REPORT**",
-    "━━━━━━━━━━━━━━━━━━━━",
-    `📁 Simulated channels: **${channels}**`,
-    `💬 Messages per channel: **${perChannel}**`,
-    `🧮 Simulated total: **${perChannel * channels}**`,
-    `📝 Sample message: ${CONFIG.testMessage}`,
-    `🔁 Simulation runs: **${simulationRuns}**`,
-    "━━━━━━━━━━━━━━━━━━━━",
-    "✅ Real messages sent: **0**",
-    "✅ Real channels created: **0**",
-    "🛡️ Mode: **SIMULATION ONLY**"
-  ].join("\n");
+if (!TOKEN) {
+  throw new Error("Set DISCORD_TOKEN in your host environment variables.");
 }
 
-client.once(Events.ClientReady, (readyClient) => {
-  console.log(
-    `⚡ ${readyClient.user.tag} is online!`
-  );
-  console.log("SZYT simulation mode enabled.");
+const commands = [
+  new SlashCommandBuilder()
+    .setName("cook")
+    .setDescription("Check whether SZYT is online"),
+
+  new SlashCommandBuilder()
+    .setName("testnuke")
+    .setDescription("Run a safe channel and message simulation")
+    .addIntegerOption(option =>
+      option.setName("channels")
+        .setDescription("Channels to simulate (max 900)")
+        .setMinValue(1)
+        .setMaxValue(900)
+        .setRequired(true)
+    )
+    .addIntegerOption(option =>
+      option.setName("messages")
+        .setDescription("Messages per simulated channel")
+        .setMinValue(1)
+        .setMaxValue(1000000)
+        .setRequired(true)
+    )
+].map(command => command.toJSON());
+
+const client = new Client({
+  intents: [GatewayIntentBits.Guilds]
 });
 
-client.on(Events.MessageCreate, async (message) => {
-  // Ignore bots and messages outside servers.
-  if (message.author.bot || !message.guild) return;
+client.once(Events.ClientReady, async readyClient => {
+  console.log(`SZYT online as ${readyClient.user.tag}`);
 
-  // Only respond to the two configured commands.
-  const command = message.content.trim().toLowerCase();
+  try {
+    const rest = new REST({ version: "10" }).setToken(TOKEN);
 
-  if (command === `${CONFIG.prefix}cook`) {
-    await message.reply(
-      "🔥 **SZYT is online!**\n" +
-      "Simulation mode: enabled\n" +
-      "Commands: `!cook`, `!testnuke`"
+    await rest.put(
+      Routes.applicationCommands(readyClient.user.id),
+      { body: commands }
     );
-  }
 
-  if (command === `${CONFIG.prefix}testnuke`) {
-    try {
-      await message.reply({
-        content: makeSimulationReport(),
-        allowedMentions: { parse: [] }
+    console.log("Global slash commands registered.");
+  } catch (error) {
+    console.error("Slash command registration failed:", error);
+  }
+});
+
+client.on(Events.InteractionCreate, async interaction => {
+  if (!interaction.isChatInputCommand()) return;
+
+  try {
+    if (interaction.commandName === "cook") {
+      await interaction.reply({
+        content: "🔥 SZYT is online!\n🛡️ Simulation mode enabled.",
+        ephemeral: true
       });
-    } catch (error) {
-      console.error("Simulation error:", error);
-      await message.reply("⚠️ Could not create the simulation report.");
+    }
+
+    if (interaction.commandName === "testnuke") {
+      const channels = interaction.options.getInteger("channels", true);
+      const messages = interaction.options.getInteger("messages", true);
+
+      await interaction.reply({
+        content: [
+          "🧪 **SZYT SIMULATION REPORT**",
+          "━━━━━━━━━━━━━━━━━━━━",
+          `📁 Simulated channels: **${channels.toLocaleString()}**`,
+          `💬 Messages per channel: **${messages.toLocaleString()}**`,
+          `🧮 Simulated total: **${(channels * messages).toLocaleString()}**`,
+          "━━━━━━━━━━━━━━━━━━━━",
+          "✅ Actual channels created: **0**",
+          "✅ Actual messages sent: **0**",
+          "🛡️ Simulation only"
+        ].join("\n"),
+        ephemeral: true
+      });
+    }
+  } catch (error) {
+    console.error(error);
+
+    const reply = {
+      content: "⚠️ Command failed. Check the host logs.",
+      ephemeral: true
+    };
+
+    if (interaction.replied || interaction.deferred) {
+      await interaction.followUp(reply).catch(() => {});
+    } else {
+      await interaction.reply(reply).catch(() => {});
     }
   }
 });
 
-client.on(Events.Error, (error) => {
-  console.error("Discord client error:", error);
-});
-
-const token = process.env.DISCORD_TOKEN;
-
-if (!token) {
-  console.error(
-    "Missing DISCORD_TOKEN environment variable."
-  );
-  process.exit(1);
-}
-
-client.login(token).catch((error) => {
-  console.error("Failed to log in. Check your bot token.", error.message);
+client.login(TOKEN).catch(error => {
+  console.error("Login failed:", error);
 });
