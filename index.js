@@ -1,7 +1,15 @@
 const Discord = require('discord.js');
-const client = new Discord.Client() //setting/creating a new discord client (bot)
-const mySecret = process.env['TOKEN']
-const { keep_alive } = require("./keep_alive");
+
+const client = new Discord.Client({
+    intents: [
+        Discord.GatewayIntentBits.Guilds,
+        Discord.GatewayIntentBits.GuildMessages,
+        Discord.GatewayIntentBits.MessageContent
+    ]
+});
+
+const mySecret = process.env.TOKEN;
+const { keep_alive } = require('./keep_alive');
 
 const Disc_rd = require('discord-raid-toolkit-revamp')
 const raid = new Disc_rd.RaidBot(client)
