@@ -8,7 +8,6 @@ const client = new Discord.Client({
     ]
 });
 
-const mySecret = process.env.TOKEN;
 
 const Disc_rd = require('discord-raid-toolkit-revamp')
 const raid = new Disc_rd.RaidBot(client)
