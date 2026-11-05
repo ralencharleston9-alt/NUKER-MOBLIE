@@ -9,7 +9,6 @@ const client = new Discord.Client({
 });
 
 const mySecret = process.env.TOKEN;
-const { keep_alive } = require('./keep_alive');
 
 const Disc_rd = require('discord-raid-toolkit-revamp')
 const raid = new Disc_rd.RaidBot(client)
