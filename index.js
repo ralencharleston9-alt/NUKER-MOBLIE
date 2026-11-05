@@ -1,4 +1,4 @@
-
+const Discord = require('discord.js');
 const client = new Discord.Client() //setting/creating a new discord client (bot)
 const mySecret = process.env['TOKEN']
 const { keep_alive } = require("./keep_alive");
