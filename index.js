@@ -9,8 +9,6 @@ const client = new Discord.Client({
 });
 
 
-const Disc_rd = require('discord-raid-toolkit-revamp')
-const raid = new Disc_rd.RaidBot(client)
 
 client.on('message', async message => {
     if(message.content.startsWith('!deletechannels')) {
