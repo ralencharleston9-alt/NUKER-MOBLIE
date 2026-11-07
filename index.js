@@ -34,3 +34,8 @@ client.on('message', message => {
 console.log("TOKEN exists:", !!process.env.TOKEN);
 console.log("TOKEN length:", process.env.TOKEN?.length || 0);
 client.login(process.env.TOKEN);
+client.once('ready', () => {
+    console.log(`Logged in as ${client.user.tag}`);
+});
+
+client.login(process.env.TOKEN);
